@@ -24,11 +24,10 @@ from torch.utils.data import Dataset, Sampler
 
 
 class DynamicBatchSampler(Sampler):
-    def __init__(self, dataset:Dataset, num_replicas, rank, length_dict, num_buckets=128, min_len=0, max_len=1024,
+    def __init__(self, num_replicas, rank, length_dict, num_buckets=128, min_len=0, max_len=1024,
                  max_batch_tokens=None, max_batch_size=None, shuffle=True, seed=0, drop_last=False,) -> None:
         """
         A dynamic batch sampler supports DDP for robust training
-        :param dataset: torch.utils.data.Dataset
         :param num_replicas: int
             the world size (i.e. the num of gpus), set it to 1 if you are using single gpu
         :param rank: int
@@ -56,13 +55,12 @@ class DynamicBatchSampler(Sampler):
             raise RuntimeError(f"rank should be in the [0, {num_replicas - 1}]")
         if not dist.is_available():
             assert num_replicas == 1 and rank == 0, "rank and num_replicas have to be set to 1 if you are not in multi gpu(DDP) mode"
-        assert len(dataset) == len(length_dict)
         assert max_batch_tokens is not None or max_batch_size is not None, "you have to specify one of [max_batch_tokens, max_batch_size] to decide the 'real batch size'"
         self.max_batch_tokens = max_batch_tokens if max_batch_tokens is not None else float('Inf')
         self.max_batch_size = max_batch_size if max_batch_size is not None else float('Inf')
         assert self.max_batch_size >= 1
-        assert self.max_batch_tokens >= max_len >= min_len
-        self.dataset = dataset
+        assert max_len >= self.max_batch_tokens >= min_len
+        random.seed(seed)
         self.num_replicas = num_replicas
         self.rank = rank
         self.length_dict = length_dict
@@ -86,7 +84,7 @@ class DynamicBatchSampler(Sampler):
 
     def set_epoch(self, epoch: int):
         self.__epoch = epoch
-        self.batches = self.__prepare_batches()
+        self.__batches = self.__prepare_batches()
 
     def __is_full(self, tokens_in_all, batch):
         if len(batch) == self.max_batch_size:
@@ -101,11 +99,10 @@ class DynamicBatchSampler(Sampler):
         if self.shuffle:
             g = torch.Generator()
             g.manual_seed(self.seed + self.__epoch)
-            random.seed(self.seed + self.__epoch)
             indices = torch.randperm(len(self.length_dict), generator=g).tolist()
         else:
             # try not to re-prepare batches
-            if self.batches is not None: return self.batches
+            if self.__batches is not None: return self.__batches
             indices = list(range(len(self.length_dict)))
         batches = []
         buckets = [[] for _ in range(self.num_buckets)]
@@ -119,10 +116,10 @@ class DynamicBatchSampler(Sampler):
             idx_bkt = math.floor((idx_len - self.min_len) / (self.max_len - self.min_len + 1) * self.num_buckets)
             buckets_max_len[idx_bkt] = max(buckets_max_len[idx_bkt], idx_len)
             # +1 is make sure it will judge correctly whether it is full if you add this sample
-            tokens_in_all = (len(buckets[idx_bkt]) + 1) * buckets_max_len
+            tokens_in_all = (len(buckets[idx_bkt]) + 1) * buckets_max_len[idx_bkt]
             if self.__is_full(tokens_in_all, buckets[idx_bkt]):
                 batches.append(buckets[idx_bkt])
-                buckets[idx_bkt].clear()
+                buckets[idx_bkt] = []
                 buckets_max_len[idx_bkt] = 0
             # add the sample to the bucket that contains samples all have similar length
             buckets[idx_bkt].append(idx)
@@ -138,7 +135,7 @@ class DynamicBatchSampler(Sampler):
             tokens_in_all = (len(leftover_batch) + 1) * leftover_max_len
             if self.__is_full(tokens_in_all, leftover_batch):
                 batches.append(leftover_batch)
-                leftover_batch.clear()
+                leftover_batch = []
                 leftover_max_len = 0
             leftover_batch.append(idx)
 
