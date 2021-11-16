@@ -40,6 +40,7 @@ class MyDataset(Dataset):
     def __init__(self, vocab_size, sample_num, max_len):
         self.x = [[random.randint(1, vocab_size - 1) for _ in range(random.randint(1, max_len))] for _ in range(sample_num)]
         self.y = [random.randint(0, 1) for _ in range(sample_num)]
+        # the len_dict contains the number of tokens of each sample
         self.len_dict = [len(k) for k in self.x]
 
     def __len__(self):
@@ -85,19 +86,21 @@ def setup(rank, world_size, port):
 def runner(rank, world_size, port):
     setup(rank, world_size, port)
     dataset = MyDataset(VOCAB_SIZE, 10000, 64)
+    # create your loader here
     batch_sampler = DynamicBatchSampler(world_size, rank, dataset.len_dict, 64, max_batch_size=32, max_batch_tokens=128, shuffle=True)
     loader = DataLoader(dataset, batch_sampler=batch_sampler, collate_fn=padding_collator)
+    # create your loader done
     model = MyModel(VOCAB_SIZE, 2, 64)
     model.to(rank)
     ddp_model = ddp(model, device_ids=[rank])
     optimizer = optim.Adam(ddp_model.parameters(), lr=1e-3)
-    criterion = nn.CrossEntropyLoss(reduction='mean', ignore_index=PAD_TOKEN_ID)
+    criterion = nn.CrossEntropyLoss(reduction='mean')
     criterion.to(rank)
 
     for epoch in range(2):
-        # VERY IMPORTANT
+        # VERY IMPORTANT BELOW
         batch_sampler.set_epoch(epoch)
-        # VERY IMPORTANT
+        # VERY IMPORTANT ABOVE
         with tqdm(total=len(loader), disable=rank != 0, desc=f'epoch {epoch}') as pbar:
             for i, (x, y) in enumerate(loader):
                 optimizer.zero_grad()
