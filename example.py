@@ -1,3 +1,4 @@
+# Project: https://github.com/Raibows/DynamicBatchSampler
 # Author: Raibows@GitHub https://github.com/Raibows
 # Licensed under the GNU GENERAL PUBLIC LICENSE, Version 3
 # This program is free software: you can redistribute it and/or modify
@@ -17,18 +18,18 @@ import os
 import random
 import copy
 import time
-
 import torch
 import logging
-import torch.multiprocessing as mp
+from torch import nn
+from tqdm import tqdm
+from torch import optim
 import torch.distributed as dist
+import torch.multiprocessing as mp
+from argparse import ArgumentParser
+from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from torch.nn.parallel import DistributedDataParallel as ddp
-from tqdm import tqdm
-from torch import nn
-from torch import optim
-from torch.utils.data import Dataset
-from argparse import ArgumentParser
+
 from DBSampler import DynamicBatchSampler
 
 logging.basicConfig(level=logging.INFO, datefmt="%m/%d/%Y %H:%M:%S", format='%(asctime)s - %(levelname)s - %(name)s\n%(message)s')
@@ -65,6 +66,7 @@ def list_copy(*args):
     return [list(copy.deepcopy(a)) for a in args]
 
 def padding_collator(batch):
+    # padding your batch
     x, y, x_len = zip(*batch)
     x, y, x_len = list_copy(x, y, x_len)
     max_len = max(x_len)
@@ -78,7 +80,6 @@ def padding_collator(batch):
 def setup(rank, world_size, port):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = str(port)
-    # initialize the process group
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
 def runner(rank, world_size, port):
@@ -93,9 +94,10 @@ def runner(rank, world_size, port):
     criterion = nn.CrossEntropyLoss(reduction='mean', ignore_index=PAD_TOKEN_ID)
     criterion.to(rank)
 
-
     for epoch in range(2):
+        # VERY IMPORTANT
         batch_sampler.set_epoch(epoch)
+        # VERY IMPORTANT
         with tqdm(total=len(loader), disable=rank != 0, desc=f'epoch {epoch}') as pbar:
             for i, (x, y) in enumerate(loader):
                 optimizer.zero_grad()
@@ -106,7 +108,7 @@ def runner(rank, world_size, port):
                 optimizer.step()
                 pbar.set_postfix_str(f"loss {loss.item():.4f} bsz {x.shape[0]}")
                 pbar.update(1)
-                # for observation
+                # for intuition
                 time.sleep(0.3)
 
     dist.destroy_process_group()

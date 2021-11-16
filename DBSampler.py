@@ -1,3 +1,4 @@
+# Project: https://github.com/Raibows/DynamicBatchSampler
 # Author: Raibows@GitHub https://github.com/Raibows
 # Licensed under the GNU GENERAL PUBLIC LICENSE, Version 3
 # This program is free software: you can redistribute it and/or modify
@@ -19,7 +20,7 @@ import torch
 import logging
 import math
 import torch.distributed as dist
-from torch.utils.data import Dataset, Sampler
+from torch.utils.data import Sampler
 
 
 
@@ -51,6 +52,7 @@ class DynamicBatchSampler(Sampler):
         :param seed: int
         :param drop_last: bool
         """
+        super(DynamicBatchSampler, self).__init__(None)
         if dist.is_available() and not num_replicas > rank >= 0:
             raise RuntimeError(f"rank should be in the [0, {num_replicas - 1}]")
         if not dist.is_available():
