@@ -1,6 +1,6 @@
 # Dynamic Batch Sampler
 
-Yet another dynamic batch sampler for variable sequence data (e.g. most of the data in NLP) in PyTorch. 
+Yet another dynamic batch sampler for variable sequence data (e.g., most of the data in NLP) in PyTorch. 
 
 Supports both **single gpu** and **multi-gpu** training (DDP, Distributed Data Parallel).
 
@@ -45,7 +45,7 @@ single gpu or multi-gpu (DDP)
    from DBSampler import DynamicBatchSampler
    dataset = MyDataset()
    batch_sampler = DynamicBatchSampler(world_size, rank, dataset.len_dict, 64, max_batch_size=32, max_batch_tokens=128, shuffle=True)
-   # you don't need to pass other params (e.g. batch_size, shuffle and sampler) 
+   # you don't need to pass other params (e.g., batch_size, shuffle and sampler) 
    dataloader = DataLoader(dataset, batch_sampler=batch_sampler, collate_fn=padding_collator)
    ```
 
@@ -99,7 +99,7 @@ A text classification demo could be found at ``example.py``, run it with ``pytho
 
   Whether to shuffle the data after every epoch. It is strongly suggested to set ``True`` for train dataset to use the power of ``DynamicBatchSampler``.
 
-- **seed**: bool
+- **seed**: int
 
   Set the seed for reproducibility.
 
