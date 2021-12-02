@@ -105,7 +105,7 @@ class DynamicBatchSampler(Sampler):
             indices = torch.randperm(len(self.length_dict), generator=g).tolist()
         else:
             # try not to re-prepare batches
-            if self.__batches is not None: return self.__batches
+            if len(self.__batches) > 0: return self.__batches
             indices = list(range(len(self.length_dict)))
         batches = []
         buckets = [[] for _ in range(self.num_buckets)]
