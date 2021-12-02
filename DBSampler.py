@@ -61,7 +61,8 @@ class DynamicBatchSampler(Sampler):
         self.max_batch_tokens = max_batch_tokens if max_batch_tokens is not None else float('Inf')
         self.max_batch_size = max_batch_size if max_batch_size is not None else float('Inf')
         assert self.max_batch_size >= 1
-        assert max_len >= self.max_batch_tokens >= min_len
+        assert self.max_batch_tokens >= min_len
+        assert max_len >= min_len
         random.seed(seed)
         self.num_replicas = num_replicas
         self.rank = rank
