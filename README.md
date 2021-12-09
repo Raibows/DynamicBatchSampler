@@ -1,24 +1,24 @@
 # Dynamic Batch Sampler
 
-Yet another dynamic batch sampler for variable sequence data (e.g., most of the data in NLP) in PyTorch. 
-
-Supports both **single gpu** and **multi-gpu** training (DDP, Distributed Data Parallel).
-
-Welcome to issue or pull requests! Please star my project if it helps you.
+Yet another dynamic batch sampler for variable sequence data (e.g., most of the data in NLP) in PyTorch. Supports both **single gpu** and **multi-gpu** training (DDP, Distributed Data Parallel). 
 
 <p align=center>
     <b><big>Rubust. Easy to use. Efficient for distributed training.</big></b>
 </p>
+
+Efficient for training because it will cluster the input data that have similar length to reduce the padding as much as possible. Besides, the batch size will dynamically change to utilize the gpu memory due to every batch is determined by the number of total tokens of a batch. Further to explain, your gpu memory usage is decided by the number of total tokens of a batch but not the batch size! So a better way to process variable sequence data like text sentence is to let the batch size change! See the parameters to have a thorough comprehension.
+
+Welcome to issue or pull requests! Please star my project if it helps you.
+
 
 ## Requirements
 
 ```
 python 3.5+
 PyTorch 1.x
-single gpu or multi-gpu (DDP)
 ```
 
-## QuickStart
+## Quick Start
 
 1. clone this repo or just copy the file ``DBSampler.py`` to your root directory of your project.
 
